@@ -36,7 +36,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 RUN mkdir -p /app/chroma_data /app/logs
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8088
 
 # Run the application with hot reload
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-level", "debug"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8088", "--reload", "--log-level", "debug"]
