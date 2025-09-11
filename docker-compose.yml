@@ -1,0 +1,17 @@
+# docker-compose.yml - Local development and testing
+version: '3.8'
+
+services:
+  chroma-app:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    image: nn-avatar-vectorstore-management
+    container_name: nn-avatar-vectorstore-management
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - ./app:/app
+    environment:
+      - CHROMA_PATH=/app/chroma_db
