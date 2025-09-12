@@ -23,14 +23,7 @@ COPY requirements.txt .
 
 # Install Python dependencies with development extras
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir \
-        pytest \
-        pytest-asyncio \
-        black \
-        flake8 \
-        isort \
-        mypy
+    pip install --no-cache-dir -r requirements.txt
 
 # Create directories
 RUN mkdir -p /app/chroma_data /app/logs

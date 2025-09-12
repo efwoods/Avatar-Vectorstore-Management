@@ -6,8 +6,8 @@ from fastapi import APIRouter, HTTPException, status
 from datetime import datetime
 import logging
 
-from app.core.config import get_settings
-from app.db.schema.models import HealthResponse
+from core.config import get_settings
+from db.schema.models import HealthResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

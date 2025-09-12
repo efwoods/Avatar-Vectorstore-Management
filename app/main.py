@@ -9,12 +9,12 @@ from contextlib import asynccontextmanager
 import uvicorn
 import logging
 
-from app.core.config import get_settings
-from app.db.chroma_manager import ChromaDBManager
-from app.api.collections import router as collections_router
-from app.api.documents import router as documents_router
-from app.api.persistence import router as persistence_router
-from app.api.health import router as health_router
+from core.config import get_settings
+from db.chroma_manager import ChromaDBManager
+from api.collections import router as collections_router
+from api.documents import router as documents_router
+from api.persistence import router as persistence_router
+from api.health import router as health_router
 
 # Configure logging
 logging.basicConfig(

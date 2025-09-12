@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   chromadb-api:
     build:
@@ -7,11 +5,10 @@ services:
       dockerfile: Dockerfile.dev
     container_name: chromadb-vectorstore-dev
     ports:
-      - "8000:8000"
+      - "8088:8088"
     volumes:
-      - ./app:/app/app
-      - ./main.py:/app/main.py
-      - ./chroma_data:/app/chroma_data
+      - ./app:/app
+      - ./app/chroma_data:/app/chroma_data
       - ./logs:/app/logs
     environment:
       - APP_ENV=development
@@ -27,7 +24,7 @@ services:
       - .env
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health/"]
       interval: 30s
       timeout: 10s
       retries: 3

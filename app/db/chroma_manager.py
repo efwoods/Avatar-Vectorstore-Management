@@ -17,9 +17,8 @@ from datetime import datetime
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import aiofiles
-
-from app.core.config import Settings
-from app.db.schema.models import (
+from core.config import Settings
+from db.schema.models import (
     Collection, Document, QueryRequest, QueryResponse,
     BackupRequest, RestoreRequest
 )
