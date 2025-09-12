@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
 import logging
 
-from db.chroma_manager import ChromaDBManager
+from db.ChromaDBManager import ChromaDBManager
 from db.schema.models import (
     CreateCollectionRequest, CreateCollectionResponse,
     CollectionResponse, ErrorResponse
@@ -31,7 +31,7 @@ async def create_collection(
 ):
     """Create a new collection"""
     try:
-        from app.db.schema.models import Collection
+        from db.schema.models import Collection
         collection = Collection(name=request.name, metadata=request.metadata)
         result = await chroma_manager.create_collection(collection)
         

@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     s3_bucket_name: str
     s3_prefix: str = "vectorstore"
+    USER_ID: str
     
     # Security settings
     api_key: Optional[str] = None
@@ -59,3 +60,5 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached settings instance"""
     return Settings()
+
+settings = Settings()

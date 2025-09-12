@@ -60,3 +60,9 @@ users/{user_id}/
 |   └── media/original/images
 |── image/                         # User-level personal image
 |── *{other_potential_user_level_folders}  # Other potential user-level folders such as billing & account information
+
+
+------
+
+https://grok.com/c/93885936-dbf7-4165-8d27-2318886ae73a
+

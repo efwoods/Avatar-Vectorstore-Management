@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query
 from typing import List, Optional
 import logging
 
-from db.chroma_manager import ChromaDBManager
+from db.ChromaDBManager import ChromaDBManager
 from db.schema.models import (
     AddDocumentsRequest, AddDocumentsResponse,
     GetDocumentsResponse, UpdateDocumentsRequest, UpdateDocumentsResponse,

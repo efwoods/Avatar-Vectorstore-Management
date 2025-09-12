@@ -9,7 +9,6 @@ services:
     volumes:
       - ./app:/app
       - ./app/chroma_data:/app/chroma_data
-      - ./logs:/app/logs
     environment:
       - APP_ENV=development
       - DEBUG=true
@@ -32,4 +31,3 @@ services:
 
 volumes:
   chroma_data:
-  logs:

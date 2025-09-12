@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
 import logging
 
-from db.chroma_manager import ChromaDBManager
+from db.ChromaDBManager import ChromaDBManager
 from db.schema.models import (
     BackupRequest, BackupResponse,
     RestoreRequest, RestoreResponse,
