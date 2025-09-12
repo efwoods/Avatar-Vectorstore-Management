@@ -1,0 +1,35 @@
+# Development Dockerfile for ChromaDB Vectorstore Service
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV APP_ENV=development
+
+# Set work directory
+WORKDIR /app
+
+# Install system dependencies including development tools
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    vim \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies with development extras
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Create directories
+RUN mkdir -p /app/chroma_data /app/logs
+
+# Expose port
+EXPOSE 8088
+
+# Run the application with hot reload
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8088", "--reload", "--log-level", "debug"]
