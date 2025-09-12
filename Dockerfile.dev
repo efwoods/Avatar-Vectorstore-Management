@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Create directories
-RUN mkdir -p /app/chroma_data /app/logs
+# RUN mkdir -p /app/chroma_data
 
 # Expose port
 EXPOSE 8088

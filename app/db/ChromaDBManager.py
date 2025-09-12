@@ -360,7 +360,7 @@ class ChromaDBManager:
                     lambda: self.s3_client.put_object(
                         Bucket=self.settings.s3_bucket_name,
                         Key=metadata_key,
-                        Body=json.dumps(metadata),
+                        Body=json.dumps(metadata, default=str),
                         ContentType="application/json"
                     )
                 )
@@ -462,8 +462,8 @@ class ChromaDBManager:
             logger.info(f"Starting fresh vectorstore creation at {local_persist_dir}")
 
             # Clean directory with retry logic
-            if os.path.exists(local_persist_dir):
-                await self._safe_rmtree(local_persist_dir)
+            # if os.path.exists(local_persist_dir):
+                # await self._safe_rmtree(local_persist_dir)
             os.makedirs(local_persist_dir, exist_ok=True)
 
             # Initialize ChromaDB client with minimal settings
