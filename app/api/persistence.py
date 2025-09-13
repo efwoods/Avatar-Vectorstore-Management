@@ -3,22 +3,19 @@ Persistence API router for S3 backup and restore operations
 """
 
 from fastapi import APIRouter, HTTPException, Depends, status
-from typing import List
+from typing import List, Optional
 import logging
 
 from db.ChromaDBManager import ChromaDBManager
-from db.schema.models import (
-    BackupRequest, BackupResponse,
-    RestoreRequest, RestoreResponse,
-    ListBackupsRequest, ListBackupsResponse
-)
+from db.schema.models import BackupResponse, RestoreResponse, ListBackupsResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-async def get_chroma_manager() -> ChromaDBManager:
-    """Dependency injection placeholder - will be overridden in main.py"""
-    pass
+def get_chroma_manager() -> ChromaDBManager:
+    """Get the chroma manager instance from main module"""
+    from main import get_chroma_manager as _get_chroma_manager
+    return _get_chroma_manager()
 
 @router.post("/backup",
     response_model=BackupResponse,
@@ -27,19 +24,15 @@ async def get_chroma_manager() -> ChromaDBManager:
     description="Create a backup of the ChromaDB vectorstore and upload it to S3"
 )
 async def backup_to_s3(
-    request: BackupRequest,
     chroma_manager: ChromaDBManager = Depends(get_chroma_manager)
 ):
     """Backup ChromaDB vectorstore to S3"""
     try:
-        backup_info = await chroma_manager.backup_to_s3(
-            user_id=request.user_id,
-            avatar_id=request.avatar_id
-        )
+        backup_info = await chroma_manager.backup_to_s3(chroma_manager.user_id)
         
         return BackupResponse(
             success=True,
-            message=f"Successfully backed up vectorstore for user {request.user_id}",
+            message=f"Successfully backed up vectorstore for user {chroma_manager.user_id}",
             backup_info=backup_info
         )
     except Exception as e:
@@ -55,29 +48,16 @@ async def backup_to_s3(
     description="Restore ChromaDB vectorstore from an S3 backup"
 )
 async def restore_from_s3(
-    request: RestoreRequest,
     chroma_manager: ChromaDBManager = Depends(get_chroma_manager)
 ):
     """Restore ChromaDB vectorstore from S3"""
     try:
-        success = await chroma_manager.restore_from_s3(
-            user_id=request.user_id,
-            backup_timestamp=request.backup_timestamp,
-            avatar_id=request.avatar_id
-        )
-        
-        if not success:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to restore vectorstore"
-            )
+        await chroma_manager.restore_from_s3(chroma_manager.user_id)
         
         return RestoreResponse(
             success=True,
-            message=f"Successfully restored vectorstore for user {request.user_id}"
+            message=f"Successfully restored vectorstore for user {chroma_manager.user_id}"
         )
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error restoring from S3: {e}")
         raise HTTPException(
@@ -88,19 +68,14 @@ async def restore_from_s3(
 @router.get("/backups",
     response_model=ListBackupsResponse,
     summary="List available backups",
-    description="List all available backups for a user in S3"
+    description="List all available backups for the user in S3"
 )
 async def list_backups(
-    user_id: str,
-    avatar_id: str = None,
     chroma_manager: ChromaDBManager = Depends(get_chroma_manager)
 ):
     """List available S3 backups"""
     try:
-        backups = await chroma_manager.list_s3_backups(
-            user_id=user_id,
-            avatar_id=avatar_id
-        )
+        backups = await chroma_manager.list_s3_backups(chroma_manager.user_id)
         
         return ListBackupsResponse(
             backups=backups,
@@ -113,27 +88,20 @@ async def list_backups(
             detail=f"Failed to list backups: {str(e)}"
         )
 
-@router.delete("/backups",
-    summary="Delete backup from S3",
-    description="Delete a specific backup from S3"
+@router.delete("/backup",
+    summary="Delete current backup from S3",
+    description="Delete the current backup from S3"
 )
 async def delete_backup(
-    user_id: str,
-    backup_timestamp: str,
-    avatar_id: str = None,
     chroma_manager: ChromaDBManager = Depends(get_chroma_manager)
 ):
-    """Delete a backup from S3"""
+    """Delete current backup from S3"""
     try:
-        # Determine S3 path
-        if avatar_id:
-            s3_path = chroma_manager.settings.get_s3_avatar_vectorstore_path(user_id, avatar_id)
-        else:
-            s3_path = chroma_manager.settings.get_s3_vectorstore_path(user_id)
+        s3_path = chroma_manager.settings.get_s3_vectorstore_path(chroma_manager.user_id)
         
         # Delete backup file
-        backup_key = f"{s3_path}backup_{backup_timestamp}.zip"
-        metadata_key = f"{s3_path}metadata_{backup_timestamp}.json"
+        backup_key = f"{s3_path}chroma_backup.zip"
+        metadata_key = f"{s3_path}metadata.json"
         
         # Delete from S3
         chroma_manager.s3_client.delete_object(
@@ -145,7 +113,7 @@ async def delete_backup(
             Key=metadata_key
         )
         
-        return {"success": True, "message": f"Successfully deleted backup {backup_timestamp}"}
+        return {"success": True, "message": "Successfully deleted backup"}
     except Exception as e:
         logger.error(f"Error deleting backup: {e}")
         raise HTTPException(
@@ -172,12 +140,19 @@ async def get_persistence_status(
         # Get local vectorstore info
         collections = await chroma_manager.list_collections()
         
+        # Check if backup exists
+        s3_path = chroma_manager.settings.get_s3_vectorstore_path(chroma_manager.user_id)
+        backup_exists = await chroma_manager._check_s3_vectorstore(s3_path)
+        
         return {
             "s3_status": s3_status,
             "s3_bucket": chroma_manager.settings.s3_bucket_name,
+            "s3_backup_path": f"s3://{chroma_manager.settings.s3_bucket_name}/{s3_path}",
+            "backup_exists": backup_exists,
             "local_collections_count": len(collections),
             "local_collections": [col["name"] for col in collections],
-            "persistence_directory": chroma_manager.settings.chroma_persist_directory
+            "persistence_directory": chroma_manager.settings.chroma_persist_directory,
+            "user_id": chroma_manager.user_id
         }
     except Exception as e:
         logger.error(f"Error getting persistence status: {e}")

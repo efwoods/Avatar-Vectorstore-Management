@@ -17,9 +17,10 @@ from db.schema.models import (
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-async def get_chroma_manager() -> ChromaDBManager:
-    """Dependency injection placeholder - will be overridden in main.py"""
-    pass
+def get_chroma_manager() -> ChromaDBManager:
+    """Get the chroma manager instance from main module"""
+    from main import get_chroma_manager as _get_chroma_manager
+    return _get_chroma_manager()
 
 @router.post("/{collection_name}",
     response_model=AddDocumentsResponse,
