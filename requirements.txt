@@ -33,3 +33,5 @@ requests==2.31.0
 
 sentence-transformers==2.7.0
 huggingface_hub
+
+python-multipart

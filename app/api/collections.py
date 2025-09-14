@@ -5,6 +5,8 @@ Collections API router for ChromaDB operations
 from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
 import logging
+import uuid
+from datetime import datetime
 
 from db.ChromaDBManager import ChromaDBManager
 from db.schema.models import (
@@ -18,13 +20,20 @@ router = APIRouter()
 # Import the dependency function from main module at runtime
 def get_chroma_manager() -> ChromaDBManager:
     """Get the chroma manager instance from main module"""
-    # This will be imported at runtime to avoid circular imports
     from main import get_chroma_manager as _get_chroma_manager
     return _get_chroma_manager()
 
+def preprocess_collection_name(name: str) -> str:
+    """Preprocess collection name to ensure validity"""
+    processed_name = name.lower().replace(' ', '_').replace('-', '_')
+    processed_name = ''.join(c for c in processed_name if c.isalnum() or c == '_')
+    if not processed_name:
+        raise ValueError("Invalid collection name after preprocessing")
+    return processed_name
+
 @router.post("/", 
     response_model=CreateCollectionResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
     summary="Create a new collection",
     description="Create a new ChromaDB collection with optional metadata"
 )
@@ -35,12 +44,19 @@ async def create_collection(
     """Create a new collection"""
     try:
         from db.schema.models import Collection
-        collection = Collection(name=request.name, metadata=request.metadata)
+        processed_name = preprocess_collection_name(request.name)
+        
+        # Ensure metadata is always sent
+        metadata = request.metadata or {}
+        if not metadata:
+            metadata = {"created_by": chroma_manager.user_id, "created_at": datetime.now().isoformat()}
+        
+        collection = Collection(name=processed_name, metadata=metadata)
         result = await chroma_manager.create_collection(collection)
         
         return CreateCollectionResponse(
             name=result["name"],
-            id=result["id"],
+            id=str(result["id"]),  # Convert UUID to string
             metadata=result["metadata"],
             count=result["count"]
         )
@@ -53,6 +69,7 @@ async def create_collection(
 
 @router.get("/{collection_name}",
     response_model=CollectionResponse,
+    status_code=status.HTTP_200_OK,
     summary="Get collection by name",
     description="Retrieve collection information by name"
 )
@@ -62,10 +79,11 @@ async def get_collection(
 ):
     """Get a collection by name"""
     try:
-        result = await chroma_manager.get_collection(collection_name)
+        processed_name = preprocess_collection_name(collection_name)
+        result = await chroma_manager.get_collection(processed_name)
         return CollectionResponse(
             name=result["name"],
-            id=result["id"],
+            id=str(result["id"]),  # Convert UUID to string
             metadata=result["metadata"],
             count=result["count"]
         )
@@ -78,6 +96,7 @@ async def get_collection(
 
 @router.get("/",
     response_model=List[CollectionResponse],
+    status_code=status.HTTP_200_OK,
     summary="List all collections",
     description="Get a list of all collections in the vectorstore"
 )
@@ -90,7 +109,7 @@ async def list_collections(
         return [
             CollectionResponse(
                 name=col["name"],
-                id=col["id"],
+                id=str(col["id"]),  # Convert UUID to string
                 metadata=col["metadata"],
                 count=col["count"]
             )
@@ -114,7 +133,8 @@ async def delete_collection(
 ):
     """Delete a collection"""
     try:
-        success = await chroma_manager.delete_collection(collection_name)
+        processed_name = preprocess_collection_name(collection_name)
+        success = await chroma_manager.delete_collection(processed_name)
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -126,3 +146,7 @@ async def delete_collection(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete collection: {str(e)}"
         )
+
+# - **Status Code Update**: Changed `status_code` for `create_collection`, `get_collection`, and `list_collections` from `HTTP_201_CREATED` (201) and implicit 200 to explicit `status.HTTP_200_OK` (200) for successful responses, per request. `delete_collection` remains `HTTP_204_NO_CONTENT` (204) as it returns no content, which is standard for DELETE operations.
+
+# - **Why These Changes**: Aligns API with request for 200 OK status on successful operations for POST and GET endpoints, ensuring consistency. 204 for DELETE is retained as it follows REST conventions for operations that don’t return a response body.

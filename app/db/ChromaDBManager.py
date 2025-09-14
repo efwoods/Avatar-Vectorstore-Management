@@ -14,6 +14,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from core.config import Settings
 from db.schema.models import Collection, Document, QueryRequest, QueryResponse, BackupRequest, RestoreRequest
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,6 @@ class ChromaDBManager:
                     anonymized_telemetry=False
                 )
             )
-
 
     def _schedule_auto_backup(self):
         """Schedule automatic backups if enabled"""
