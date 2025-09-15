@@ -223,21 +223,48 @@ async def delete_documents(
 @router.post("/{collection_name}/query",
     response_model=QueryResponse,
     status_code=status.HTTP_200_OK,
-    summary="Query collection",
-    description="Query documents in a collection using similarity search"
+    summary="Query collection for model context",
+    description="Query documents in a collection using similarity search and return results formatted for model context"
 )
 async def query_collection(
     collection_name: str,
     query_request: QueryCollectionRequest,
     chroma_manager: ChromaDBManager = Depends(get_chroma_manager)
 ):
-    """Query documents in a collection"""
+    """Query documents in a collection and return formatted results for model context"""
     try:
         processed_name = preprocess_collection_name(collection_name)
         query_request.collection_name = processed_name
         
-        result = await chroma_manager.query_collection(processed_name, query_request.query)
-        return result
+        # Query the ChromaDB collection
+        raw_results = await chroma_manager.query_collection(processed_name, query_request.query)
+        
+        # Extract documents from the results (similar to your generate_with_context function)
+        docs = raw_results.get("documents", [[]])[0] if raw_results.get("documents") else []
+        
+        # Format the response for model context
+        if not docs:
+            context = "No relevant context found."
+            formatted_docs = []
+        else:
+            # Join documents with newlines for context (like in your example)
+            context = "\n".join(docs)
+            # Optionally truncate context length for model input token limits
+            context = context[:1000]  # Adjust this limit as needed
+            formatted_docs = docs
+        
+        # Create a structured response that includes both raw results and formatted context
+        response = {
+            "collection_name": processed_name,
+            "query": query_request.query,
+            "context": context,  # Ready-to-use context string
+            "documents": formatted_docs,  # Individual documents
+            "raw_results": raw_results,  # Original ChromaDB response
+            "document_count": len(formatted_docs)
+        }
+        
+        return response
+        
     except Exception as e:
         logger.error(f"Error querying collection {collection_name}: {e}")
         raise HTTPException(
