@@ -156,33 +156,12 @@ class ErrorResponse(BaseModel):
     message: str
     timestamp: datetime
 
-from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+class SimpleQueryRequest(BaseModel):
+    """Simplified query request - just pass the query text"""
+    query: str = Field(..., description="Query text to search for")
+    n_results: int = Field(10, description="Number of results to return")
 
-class QueryResponse(BaseModel):
-    collection_name: str
-    query: str
-    context: str  # Ready-to-use context string for model prompts
-    documents: List[str]  # Individual documents
-    raw_results: Dict[str, Any]  # Original ChromaDB response
-    document_count: int
-    
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "collection_name": "my_collection",
-                "query": "What is machine learning?",
-                "context": "Machine learning is a subset of artificial intelligence...\nDeep learning uses neural networks...",
-                "documents": [
-                    "Machine learning is a subset of artificial intelligence...",
-                    "Deep learning uses neural networks..."
-                ],
-                "raw_results": {
-                    "ids": [["doc1", "doc2"]],
-                    "documents": [["Machine learning...", "Deep learning..."]],
-                    "metadatas": [[{"source": "book1"}, {"source": "book2"}]],
-                    "distances": [[0.1, 0.2]]
-                },
-                "document_count": 2
-            }
-        }
+class SimpleQueryResponse(BaseModel):
+    """Simplified query response"""
+    results: List[Dict[str, Any]] = Field(..., description="Query results")
+    count: int = Field(..., description="Number of results returned")

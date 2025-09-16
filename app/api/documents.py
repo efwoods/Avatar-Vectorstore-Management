@@ -13,7 +13,7 @@ from db.ChromaDBManager import ChromaDBManager
 from db.schema.models import (
     AddDocumentsResponse, GetDocumentsResponse, UpdateDocumentsRequest,
     UpdateDocumentsResponse, DeleteDocumentsRequest, DeleteDocumentsResponse,
-    QueryCollectionRequest, QueryResponse, Document
+    QueryCollectionRequest, QueryRequest, QueryResponse, Document, SimpleQueryRequest, SimpleQueryResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -223,48 +223,21 @@ async def delete_documents(
 @router.post("/{collection_name}/query",
     response_model=QueryResponse,
     status_code=status.HTTP_200_OK,
-    summary="Query collection for model context",
-    description="Query documents in a collection using similarity search and return results formatted for model context"
+    summary="Query collection",
+    description="Query documents in a collection using similarity search"
 )
 async def query_collection(
     collection_name: str,
     query_request: QueryCollectionRequest,
     chroma_manager: ChromaDBManager = Depends(get_chroma_manager)
 ):
-    """Query documents in a collection and return formatted results for model context"""
+    """Query documents in a collection"""
     try:
         processed_name = preprocess_collection_name(collection_name)
         query_request.collection_name = processed_name
         
-        # Query the ChromaDB collection
-        raw_results = await chroma_manager.query_collection(processed_name, query_request.query)
-        
-        # Extract documents from the results (similar to your generate_with_context function)
-        docs = raw_results.get("documents", [[]])[0] if raw_results.get("documents") else []
-        
-        # Format the response for model context
-        if not docs:
-            context = "No relevant context found."
-            formatted_docs = []
-        else:
-            # Join documents with newlines for context (like in your example)
-            context = "\n".join(docs)
-            # Optionally truncate context length for model input token limits
-            context = context[:1000]  # Adjust this limit as needed
-            formatted_docs = docs
-        
-        # Create a structured response that includes both raw results and formatted context
-        response = {
-            "collection_name": processed_name,
-            "query": query_request.query,
-            "context": context,  # Ready-to-use context string
-            "documents": formatted_docs,  # Individual documents
-            "raw_results": raw_results,  # Original ChromaDB response
-            "document_count": len(formatted_docs)
-        }
-        
-        return response
-        
+        result = await chroma_manager.query_collection(processed_name, query_request.query)
+        return result
     except Exception as e:
         logger.error(f"Error querying collection {collection_name}: {e}")
         raise HTTPException(
@@ -291,4 +264,58 @@ async def get_document_count(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Failed to get document count: {str(e)}"
+        )
+    
+
+    # Add these simplified models to your models.py file
+
+
+
+# Add this new endpoint to your documents router
+
+@router.post("/{collection_name}/simple-query",
+    response_model=SimpleQueryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Simple query collection",
+    description="Query documents in a collection using just a query string"
+)
+async def simple_query_collection(
+    collection_name: str,
+    request: SimpleQueryRequest,
+    chroma_manager: ChromaDBManager = Depends(get_chroma_manager)
+):
+    """Query documents in a collection with simplified interface"""
+    try:
+        processed_name = preprocess_collection_name(collection_name)
+        
+        # Create the internal QueryRequest object
+        query_request = QueryRequest(
+            query_texts=[request.query],  # Just the query text
+            n_results=request.n_results,
+            include=["metadatas", "documents", "distances"]  # Standard includes
+        )
+        
+        result = await chroma_manager.query_collection(processed_name, query_request)
+        
+        # Simplify the response format
+        simplified_results = []
+        if result.ids and len(result.ids) > 0:
+            for i in range(len(result.ids[0])):  # ChromaDB returns nested lists
+                doc_result = {
+                    "id": result.ids[0][i],
+                    "content": result.documents[0][i] if result.documents else None,
+                    "metadata": result.metadatas[0][i] if result.metadatas else None,
+                    "distance": result.distances[0][i] if result.distances else None
+                }
+                simplified_results.append(doc_result)
+        
+        return SimpleQueryResponse(
+            results=simplified_results,
+            count=len(simplified_results)
+        )
+    except Exception as e:
+        logger.error(f"Error querying collection {collection_name}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to query collection: {str(e)}"
         )
